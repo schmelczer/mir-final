@@ -2,24 +2,22 @@
 # coding: utf-8
 
 
+from cProfile import label
 import os
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 os.environ["WANDB_DISABLED"] = "true"
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
-from PIL import ImageFile
-
-ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 import copy
 import json
 import shutil
+from PIL import Image
 import time
 from pathlib import Path
 from random import random, seed
 from typing import List
-
 import joblib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -48,10 +46,13 @@ EMBEDDINGS_BASE_PATH = DATA_BASE_PATH / "embeddings"
 TEMP_PATH = DATA_BASE_PATH / "temp"
 EMBEDDINGS_BASE_PATH.mkdir(parents=True, exist_ok=True)
 TEMP_PATH.mkdir(parents=True, exist_ok=True)
-BATCH_SIZE = 32
+IMAGE_BATCH_SIZE = 32
+TEXT_BATCH_SIZE = 32
 IMAGE_FINETUNING_EPOCHS = 20
-TEXT_FINETUNING_EPOCHS = 15
+TEXT_FINETUNING_EPOCHS = 20
 TRAIN_TEST_SPLIT = 0.7
+IMAGE_VALIDATION_SPLIT = 0.8
+IMAGE_LEARNING_RATE = 0.001
 
 plt.rcParams["figure.figsize"] = (30, 15)
 plt.rcParams["figure.facecolor"] = "white"
@@ -60,7 +61,7 @@ plt.rcParams["axes.xmargin"] = 0
 
 EMBEDDINGS_BASE_PATH.mkdir(exist_ok=True, parents=True)
 
-seed(42)
+seed(42) 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
@@ -98,6 +99,7 @@ def train_model(
 ):
     since = time.time()
 
+    train_acc_history = []
     val_acc_history = []
 
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -156,6 +158,9 @@ def train_model(
                 best_model_wts = copy.deepcopy(model.state_dict())
             if phase == "val":
                 val_acc_history.append(epoch_acc)
+            else:
+                train_acc_history.append(epoch_acc)
+
 
         print()
 
@@ -169,7 +174,7 @@ def train_model(
 
     # load best model weights
     model.load_state_dict(best_model_wts)
-    return model, val_acc_history
+    return model, list(zip(train_acc_history, val_acc_history))
 
 
 def initialize_model(model_name, num_classes, use_pretrained=True):
@@ -221,11 +226,15 @@ def finetune_image_embedding(
         validation_folder.mkdir(parents=True, exist_ok=True)
         for d in data:
             if d.class_name == c:
-                assert (DATA_BASE_PATH / d.image_path).exists()
-                if random() > 0.8:
-                    shutil.copy(DATA_BASE_PATH / d.image_path, train_folder)
+                path = (DATA_BASE_PATH / d.image_path).with_suffix('.png')
+                image = Image.open(path)
+                if image.mode != 'RGB':
+                    print(f'bad format ({image.mode}) {path}')
+                    continue
+                if random() < IMAGE_VALIDATION_SPLIT:
+                    shutil.copy(path, train_folder)
                 else:
-                    shutil.copy(DATA_BASE_PATH / d.image_path, validation_folder)
+                    shutil.copy(path, validation_folder)
 
     num_classes = len(classes)
     model_ft, input_size = initialize_model(
@@ -257,14 +266,14 @@ def finetune_image_embedding(
     }
     dataloaders_dict = {
         x: torch.utils.data.DataLoader(
-            image_datasets[x], batch_size=BATCH_SIZE, shuffle=True, num_workers=4
+            image_datasets[x], batch_size=IMAGE_BATCH_SIZE, shuffle=True, num_workers=4
         )
         for x in ["train", "val"]
     }
 
     params_to_update = model_ft.parameters()
 
-    optimizer_ft = optim.SGD(params_to_update, lr=0.001, momentum=0.9)
+    optimizer_ft = optim.SGD(params_to_update, lr=IMAGE_LEARNING_RATE, momentum=0.9)
 
     criterion = nn.CrossEntropyLoss()
     model_ft, hist = train_model(
@@ -282,10 +291,12 @@ def finetune_image_embedding(
         num_ftrs = model_ft.fc.in_features
         model_ft.fc = nn.Identity(num_ftrs)
 
-    plt.title(f"Validation accuarcy of {model_name.upper()}")
+    plt.title(f"Validation accuracy of {model_name.upper()}")
     plt.xlabel("Epochs", labelpad=20)
-    plt.ylabel("Validation accuracy", labelpad=20)
-    plt.plot(range(1, IMAGE_FINETUNING_EPOCHS + 1), [h.cpu().numpy() for h in hist])
+    plt.ylabel("Accuracy", labelpad=20)
+    plt.plot(range(1, IMAGE_FINETUNING_EPOCHS + 1), [t.cpu().numpy() for t, v in hist], '--', label=f'Train - {model_name.upper()}')
+    plt.plot(range(1, IMAGE_FINETUNING_EPOCHS + 1), [v.cpu().numpy() for t, v in hist], label=f'Validation - {model_name.upper()}')
+    plt.legend()
     plt.ylim((0, 1.0))
     plt.savefig(f"{model_name}-{classes[0]}.png")
 
@@ -303,8 +314,12 @@ def create_image_embedding(
         test_folder.mkdir(parents=True, exist_ok=True)
         for d in data:
             if d.class_name == c:
-                assert (DATA_BASE_PATH / d.image_path).exists()
-                shutil.copy(DATA_BASE_PATH / d.image_path, test_folder)
+                path = (DATA_BASE_PATH / d.image_path).with_suffix('.png')
+                image = Image.open(path)
+                if image.mode != 'RGB':
+                    print(f'bad format ({image.mode}) {path}')
+                    continue
+                shutil.copy(path, test_folder)
                 paths.append(d.image_path)
 
     image_dataset = datasets.ImageFolder(
@@ -320,7 +335,7 @@ def create_image_embedding(
     )
 
     dataloader = torch.utils.data.DataLoader(
-        image_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4
+        image_dataset, batch_size=IMAGE_BATCH_SIZE, shuffle=False, num_workers=4
     )
     result = []
     with torch.no_grad():
@@ -335,6 +350,15 @@ def create_image_embedding(
 def generate_image_embeddings(
     train_classes, test_classes, data: List[CaptionedImage], name: str
 ) -> None:
+    finetuned_model, input_size = finetune_image_embedding(train_classes, data, "vgg")
+    vgg_embeddings_train = create_image_embedding(
+        train_classes, data, finetuned_model, input_size
+    )
+    vgg_embeddings_test = create_image_embedding(
+        test_classes, data, finetuned_model, input_size
+    )
+    del finetuned_model
+
     finetuned_model, input_size = finetune_image_embedding(
         train_classes, data, "inception"
     )
@@ -342,15 +366,6 @@ def generate_image_embeddings(
         train_classes, data, finetuned_model, input_size
     )
     inception_embeddings_test = create_image_embedding(
-        test_classes, data, finetuned_model, input_size
-    )
-    del finetuned_model
-
-    finetuned_model, input_size = finetune_image_embedding(train_classes, data, "vgg")
-    vgg_embeddings_train = create_image_embedding(
-        train_classes, data, finetuned_model, input_size
-    )
-    vgg_embeddings_test = create_image_embedding(
         test_classes, data, finetuned_model, input_size
     )
     del finetuned_model
@@ -428,8 +443,8 @@ def finetune_bert(classes: List[str], data):
     training_args = TrainingArguments(
         output_dir=DATA_BASE_PATH / "results",
         learning_rate=2e-5,
-        per_device_train_batch_size=BATCH_SIZE,
-        per_device_eval_batch_size=BATCH_SIZE,
+        per_device_train_batch_size=TEXT_BATCH_SIZE,
+        per_device_eval_batch_size=TEXT_BATCH_SIZE,
         num_train_epochs=TEXT_FINETUNING_EPOCHS,
         evaluation_strategy="epoch",
         weight_decay=0.01,
@@ -497,6 +512,8 @@ def generate_text_embeddings(
         EMBEDDINGS_BASE_PATH / f"text_embeddings_test_{name}.p",
     )
 
+    return tfidf_model
+
 
 def generate_embeddings(
     train_classes, test_classes, data: List[CaptionedImage], name: str
@@ -504,7 +521,7 @@ def generate_embeddings(
     generate_image_embeddings(train_classes, test_classes, data, name)
     generate_text_embeddings(train_classes, test_classes, data, name)
 
-
-if __name__ == "__main__":
-    generate_embeddings(flower_train_classes, flower_test_classes, flowers, "flowers")
+if __name__ == '__main__':
     generate_embeddings(bird_train_classes, bird_test_classes, birds, "birds")
+    plt.clf()
+    generate_embeddings(flower_train_classes, flower_test_classes, flowers, "flowers")
