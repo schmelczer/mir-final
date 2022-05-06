@@ -2,7 +2,6 @@
 # coding: utf-8
 
 
-from cProfile import label
 import os
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -13,11 +12,11 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 import copy
 import json
 import shutil
-from PIL import Image
 import time
 from pathlib import Path
 from random import random, seed
 from typing import List
+
 import joblib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,6 +25,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from datasets import Dataset, load_metric
+from PIL import Image
 from torchvision import datasets, models, transforms
 from tqdm.auto import tqdm
 from transformers import (
@@ -61,7 +61,7 @@ plt.rcParams["axes.xmargin"] = 0
 
 EMBEDDINGS_BASE_PATH.mkdir(exist_ok=True, parents=True)
 
-seed(42) 
+seed(42)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
@@ -161,7 +161,6 @@ def train_model(
             else:
                 train_acc_history.append(epoch_acc)
 
-
         print()
 
     time_elapsed = time.time() - since
@@ -226,10 +225,10 @@ def finetune_image_embedding(
         validation_folder.mkdir(parents=True, exist_ok=True)
         for d in data:
             if d.class_name == c:
-                path = (DATA_BASE_PATH / d.image_path).with_suffix('.png')
+                path = (DATA_BASE_PATH / d.image_path).with_suffix(".png")
                 image = Image.open(path)
-                if image.mode != 'RGB':
-                    print(f'bad format ({image.mode}) {path}')
+                if image.mode != "RGB":
+                    print(f"bad format ({image.mode}) {path}")
                     continue
                 if random() < IMAGE_VALIDATION_SPLIT:
                     shutil.copy(path, train_folder)
@@ -294,8 +293,17 @@ def finetune_image_embedding(
     plt.title(f"Validation accuracy of {model_name.upper()}")
     plt.xlabel("Epochs", labelpad=20)
     plt.ylabel("Accuracy", labelpad=20)
-    plt.plot(range(1, IMAGE_FINETUNING_EPOCHS + 1), [t.cpu().numpy() for t, v in hist], '--', label=f'Train - {model_name.upper()}')
-    plt.plot(range(1, IMAGE_FINETUNING_EPOCHS + 1), [v.cpu().numpy() for t, v in hist], label=f'Validation - {model_name.upper()}')
+    plt.plot(
+        range(1, IMAGE_FINETUNING_EPOCHS + 1),
+        [t.cpu().numpy() for t, v in hist],
+        "--",
+        label=f"Train - {model_name.upper()}",
+    )
+    plt.plot(
+        range(1, IMAGE_FINETUNING_EPOCHS + 1),
+        [v.cpu().numpy() for t, v in hist],
+        label=f"Validation - {model_name.upper()}",
+    )
     plt.legend()
     plt.ylim((0, 1.0))
     plt.savefig(f"{model_name}-{classes[0]}.png")
@@ -314,10 +322,10 @@ def create_image_embedding(
         test_folder.mkdir(parents=True, exist_ok=True)
         for d in data:
             if d.class_name == c:
-                path = (DATA_BASE_PATH / d.image_path).with_suffix('.png')
+                path = (DATA_BASE_PATH / d.image_path).with_suffix(".png")
                 image = Image.open(path)
-                if image.mode != 'RGB':
-                    print(f'bad format ({image.mode}) {path}')
+                if image.mode != "RGB":
+                    print(f"bad format ({image.mode}) {path}")
                     continue
                 shutil.copy(path, test_folder)
                 paths.append(d.image_path)
@@ -512,8 +520,6 @@ def generate_text_embeddings(
         EMBEDDINGS_BASE_PATH / f"text_embeddings_test_{name}.p",
     )
 
-    return tfidf_model
-
 
 def generate_embeddings(
     train_classes, test_classes, data: List[CaptionedImage], name: str
@@ -521,7 +527,8 @@ def generate_embeddings(
     generate_image_embeddings(train_classes, test_classes, data, name)
     generate_text_embeddings(train_classes, test_classes, data, name)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     generate_embeddings(bird_train_classes, bird_test_classes, birds, "birds")
     plt.clf()
     generate_embeddings(flower_train_classes, flower_test_classes, flowers, "flowers")

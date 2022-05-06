@@ -2,6 +2,13 @@
 
 set -e
 
+if [ -z "$1" ]
+then
+    echo "Provide the base path of your project: $0 src"
+    exit -1
+fi
+
+
 echo "Installing dependencies if necessary"
 python3 -m pip install --upgrade autoflake isort black black[jupyter] mypy
 
