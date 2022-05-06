@@ -6,3 +6,4 @@ embeddings
 temp
 results
 wandb
+*.log
