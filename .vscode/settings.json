@@ -1,3 +1,13 @@
 {
-  "cSpell.words": ["lemmatizer", "matutils", "ndarray", "tfidf"]
+  "cSpell.words": [
+    "coef",
+    "coefs",
+    "imshow",
+    "kneighbors",
+    "lemmatizer",
+    "matutils",
+    "ndarray",
+    "pyplot",
+    "tfidf"
+  ]
 }

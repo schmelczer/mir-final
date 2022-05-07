@@ -1,4 +1,4 @@
-## Sources
+## Dataset sources
 
 ### Birds
 
@@ -13,4 +13,6 @@
 
 ## Run
 
-- compile_data.ipynb
+- [compile_data.ipynb](compile_data.ipynb)
+- [embed.py](embed.py)
+- [match.ipnyb](match.ipnyb)
