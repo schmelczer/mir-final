@@ -1,9 +1,0 @@
-data
-.mypy_cache
-**/__pycache__
-embeddings
-.env
-temp
-results
-wandb
-*.log
