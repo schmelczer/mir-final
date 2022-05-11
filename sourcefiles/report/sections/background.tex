@@ -1,0 +1,15 @@
+\section{Background}
+
+Six image retrieval systems are developed and compared in this report. They are all slight variations of the same architecture which relies on a text encoder and an image encoder component connected by a linear projection.
+
+\subsection{Text-encoder}
+
+There are two approaches for representing text in learning applications: sparse or dense vectors. TF-IDF uses the former. In my implementation, the documents (captions) are cleaned, mapped to equivalence-classes, and then packed into a count vector which gets a logarithmic function applied to it component-wise. Inverse document frequency is not taken into account stemming from the clutter-free and highly descriptive nature of the captions. The SMART notation \cite{buckley1985implementation} describes this version with the \texttt{TXC} acronym.
+
+When it comes to dense vectors, the state-of-the-art are transformers. This architecture was introduced in \cite{vaswani2017attention}, and a transfer-learning-compatible implementation was created called BERT \cite{devlin2018bert}. There are numerous derivations of this model which either adjust its architecture \cite{sanh2019distilbert}, prune its weights \cite{de2020optimal}, pretrain it on a different dataset \cite{beltagy2019scibert}, or fine-tune it on a domain-specific one. For this comparison, DistilBERT was chosen to represent this family of models because it achieves compelling performance on a wide range of tasks \cite{sanh2019distilbert}.
+
+\subsection{Image-encoder}
+
+For embedding images, three well-known and historically significant architectures were selected. These are: VGG \cite{simonyan2014very}, which showed that dramatically increasing the number of layers may result in superior classification performance. ResNet \cite{he2016deep}, which introduced another leap in network depth with the help of residual connections, resulting in a more accurate model with up to 152 layers (8 times as many as VGG had). And finally, Inception V3 \cite{szegedy2016rethinking}, which was used to demonstrate that better performance can be reached not only with larger models but also with smaller and more sophisticated designs.
+
+All three of these models had been pretrained on the ImageNet dataset \cite{deng2009imagenet}.

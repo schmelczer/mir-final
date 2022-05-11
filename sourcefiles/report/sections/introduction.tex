@@ -1,0 +1,7 @@
+\section{Introduction}
+
+Retrieving images by describing them with a single English sentence has immense utility for professional and hobby searchers alike. It is even more useful when capable of generalising to novel and/or highly domain-specific classes of images. This fundamental task at the intersection of image and natural language processing has seen substantial progress over the last decades \cite{gudivada1995content,li2011text,reed2016learning,latif2019content}.
+
+With recent breakthroughs in transfer learning \cite{weiss2016survey}, utilising large pretrained models for novel, domain-specific tasks has become commonplace. Hence, the aim of this report is to apply and analyse the quality of pairs of pretrained and subsequently fine-tuned text and image classification models for text-based zero-short image retrieval. Including DistilBERT \cite{sanh2019distilbert} and classical TF-IDF vectors for encoding texts; and VGG \cite{simonyan2014very}, ResNet \cite{he2016deep}, and Inception V3 \cite{szegedy2016rethinking} for embedding the images.
+
+To make the problem more exciting and challenging, the six derived neural architectures are applied to two datasets both of which has a large number of fine-grained classes. The goal is not only to see the resulting accuracy of different pairings but also to analyse any similarity, alignment and/or structure in the resulting embedding spaces.

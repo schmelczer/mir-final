@@ -1,0 +1,39 @@
+\documentclass[times, twoside]{style/LeosPaperClass}
+\usepackage{hyperref}
+\usepackage{mathtools}
+\usepackage{graphicx}
+\usepackage{rotating}
+\usepackage{fancyhdr}
+\usepackage{rotating}
+\usepackage{siunitx}
+
+\begin{document}
+\leadauthor{A. Schmelczer}
+
+\pagestyle{fancy}
+\renewcommand{\headrulewidth}{0pt}
+\fancyhf{}
+
+% page number at foot center, suppress it for float pages
+\fancyfoot[C]{\iffloatpage{}{\thepage}}
+
+\newcommand\mc{\multicolumn}
+\title{Compatibility analysis of fine-tuned models for fine-grained text-based zero-shot image retrieval}
+\shorttitle{Compatibility analysis of fine-tuned models}
+
+\author[1]{András Schmelczer}
+
+\affil[1]{Leiden Institute for Advanced Computer Science, Leiden University, the Netherlands}
+
+\maketitle
+
+\input{sections/introduction}
+\input{sections/data}
+\input{sections/background}
+\input{sections/methods}
+\input{sections/results}
+\input{sections/conclusion}
+
+\bibliography{refs}
+
+\end{document}
