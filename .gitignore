@@ -1,0 +1,4 @@
+data
+embeddings
+.mypy_cache
+__pycache__
